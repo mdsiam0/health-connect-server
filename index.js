@@ -33,6 +33,7 @@ async function run() {
     const db = client.db("mcmsDB");
     const usersCollection = db.collection("users");
     const campsCollection = db.collection("camps");
+    const registrationsCollection = db.collection("registrations");
     // Users routes
     app.get("/users", async (req, res) => {
       try {
@@ -43,15 +44,72 @@ async function run() {
       }
     });
 
-    app.post("/users", async (req, res) => {
-      try {
-        const newUser = req.body;
-        const result = await usersCollection.insertOne(newUser);
-        res.send(result);
-      } catch (error) {
-        res.status(500).send({ message: "Failed to add user", error });
-      }
-    });
+   app.post("/users", async (req, res) => {
+  try {
+    const newUser = req.body;
+    const existingUser = await usersCollection.findOne({ email: newUser.email });
+    if (existingUser) {
+      return res.send({ message: "User already exists" });
+    }
+    const result = await usersCollection.insertOne(newUser);
+    res.send(result);
+  } catch (error) {
+    res.status(500).send({ message: "Failed to add user", error });
+  }
+});
+
+
+
+    
+// GET all camps for Organizer
+app.get("/organizer-camps/:organizerEmail", async (req, res) => {
+  const { organizerEmail } = req.params;
+  try {
+    const organizerCamps = await campsCollection.find({ organizerEmail }).toArray();
+    res.send(organizerCamps);
+  } catch (error) {
+    res.status(500).send({ message: "Failed to fetch organizer camps", error });
+  }
+});
+
+// UPDATE a camp
+app.patch("/update-camp/:id", async (req, res) => {
+  const { id } = req.params;
+  const updateData = req.body;
+  try {
+    const result = await campsCollection.updateOne(
+      { _id: new require("mongodb").ObjectId(id) },
+      { $set: updateData }
+    );
+    res.send({ success: true, result });
+  } catch (error) {
+    res.status(500).send({ success: false, error });
+  }
+});
+
+// DELETE a camp
+app.delete("/delete-camp/:id", async (req, res) => {
+  const { id } = req.params;
+  try {
+    const result = await campsCollection.deleteOne({ _id: new require("mongodb").ObjectId(id) });
+    res.send({ success: true, result });
+  } catch (error) {
+    res.status(500).send({ success: false, error });
+  }
+});
+
+// GET all registered participants
+app.get("/registered-camps/:organizerEmail", async (req, res) => {
+  const { organizerEmail } = req.params;
+  try {
+    const registrations = await registrationsCollection
+      .find({ organizerEmail })
+      .toArray();
+    res.send(registrations);
+  } catch (error) {
+    res.status(500).send({ message: "Failed to fetch registrations", error });
+  }
+});
 
     
     app.get("/camps", async (req, res) => {
