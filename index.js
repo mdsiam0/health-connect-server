@@ -25,25 +25,63 @@ const client = new MongoClient(uri, {
   },
 });
 
-// Connect to MongoDB
+// Connect to MongoDB and define routes
 async function run() {
   try {
     await client.connect();
 
     const db = client.db("mcmsDB");
     const usersCollection = db.collection("users");
-
-    // Example GET route
+    const campsCollection = db.collection("camps");
+    // Users routes
     app.get("/users", async (req, res) => {
-      const users = await usersCollection.find().toArray();
-      res.send(users);
+      try {
+        const users = await usersCollection.find().toArray();
+        res.send(users);
+      } catch (error) {
+        res.status(500).send({ message: "Failed to fetch users", error });
+      }
     });
 
-    // Example POST route
     app.post("/users", async (req, res) => {
-      const newUser = req.body;
-      const result = await usersCollection.insertOne(newUser);
-      res.send(result);
+      try {
+        const newUser = req.body;
+        const result = await usersCollection.insertOne(newUser);
+        res.send(result);
+      } catch (error) {
+        res.status(500).send({ message: "Failed to add user", error });
+      }
+    });
+
+    
+    app.get("/camps", async (req, res) => {
+      try {
+        const sortField = req.query.sort; // e.g., participants
+        const limit = parseInt(req.query.limit) || 0; // optional limit
+        const sortQuery = sortField ? { [sortField]: -1 } : {};
+
+        const camps = await campsCollection
+          .find()
+          .sort(sortQuery)
+          .limit(limit)
+          .toArray();
+
+        res.send(camps);
+      } catch (error) {
+        res.status(500).send({ message: "Failed to fetch camps", error });
+      }
+    });
+
+    // POST a new camp (Organizer)
+    app.post("/camps", async (req, res) => {
+      try {
+        const newCamp = req.body;
+        newCamp.participants = newCamp.participants || 0; // default 0
+        const result = await campsCollection.insertOne(newCamp);
+        res.send({ success: true, result });
+      } catch (error) {
+        res.status(500).send({ success: false, message: "Failed to add camp", error });
+      }
     });
 
     console.log("✅ Connected to MongoDB");
@@ -51,11 +89,12 @@ async function run() {
     console.error("❌ MongoDB connection error:", error);
   }
 }
+
 run().catch(console.dir);
 
 // Root route
 app.get("/", (req, res) => {
-  res.send("server is running...");
+  res.send("Server is running...");
 });
 
 // Start server
