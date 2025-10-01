@@ -258,6 +258,18 @@ async function run() {
     });
 
 
+    // GET all registrations for a participant
+    app.get("/registrations/participant/:email", async (req, res) => {
+      try {
+        const { email } = req.params;
+        const registrations = await registrationsCollection
+          .find({ participantEmail: email })
+          .toArray();
+        res.send(registrations);
+      } catch (error) {
+        res.status(500).send({ message: "Failed to fetch registrations", error });
+      }
+    });
 
 
     // GET all registered participants for an organizer
