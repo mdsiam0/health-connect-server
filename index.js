@@ -168,6 +168,24 @@ async function run() {
       }
     });
 
+    // GET single camp by ID
+    app.get("/camps/:id", async (req, res) => {
+      try {
+        const { id } = req.params;
+        const camp = await campsCollection.findOne({ _id: new ObjectId(id) });
+
+        if (!camp) {
+          return res.status(404).send({ message: "Camp not found" });
+        }
+
+        res.send(camp);
+      } catch (error) {
+        console.error("Error fetching camp:", error);
+        res.status(500).send({ message: "Failed to fetch camp", error });
+      }
+    });
+
+
     // UPDATE camp
     app.patch("/update-camp/:id", async (req, res) => {
       try {
@@ -196,6 +214,49 @@ async function run() {
         res.status(500).send({ success: false, error });
       }
     });
+
+    // POST a new participant registration
+    app.post("/registrations", async (req, res) => {
+      try {
+        const registration = req.body;
+
+        // Validate required fields
+        const requiredFields = [
+          "campId",
+          "campName",
+          "campFees",
+          "location",
+          "healthcareProfessional",
+          "participantName",
+          "participantEmail",
+          "age",
+          "phone",
+          "gender",
+          "emergencyContact",
+        ];
+
+        for (const field of requiredFields) {
+          if (!registration[field]) {
+            return res.status(400).send({ message: `${field} is required` });
+          }
+        }
+
+        // Save registration
+        const result = await registrationsCollection.insertOne(registration);
+
+        // Increment participant count in the camp
+        await campsCollection.updateOne(
+          { _id: new ObjectId(registration.campId) },
+          { $inc: { participants: 1 } }
+        );
+
+        res.send({ success: true, message: "Registration successful", result });
+      } catch (error) {
+        console.error("Error registering participant:", error);
+        res.status(500).send({ success: false, message: "Failed to register", error });
+      }
+    });
+
 
 
 
