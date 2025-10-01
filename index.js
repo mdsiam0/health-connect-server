@@ -1,3 +1,5 @@
+import express from "express";
+import Stripe from "stripe";
 const express = require("express");
 const cors = require("cors");
 const dotenv = require("dotenv");
@@ -124,11 +126,40 @@ async function run() {
     });
 
 
+    
+
+const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
+
+app.post("/create-payment-intent", async (req, res) => {
+  try {
+    const { amount, participantEmail, campId } = req.body;
+
+    // Create payment intent
+    const paymentIntent = await stripe.paymentIntents.create({
+      amount: amount * 100,
+      payment_method_types: ["card"],
+      metadata: {
+        participantEmail,
+        campId,
+      },
+    });
+
+    res.send({
+      clientSecret: paymentIntent.client_secret,
+    });
+  } catch (err) {
+    console.error(err);
+    res.status(500).send({ error: err.message });
+  }
+});
+
+
+
 
     // GET camps (with optional sorting & limit)
     app.get("/camps", async (req, res) => {
       try {
-        const sortField = req.query.sort; // e.g., "participants"
+        const sortField = req.query.sort;
         const limit = parseInt(req.query.limit) || 0;
         const sortQuery = sortField ? { [sortField]: -1 } : {};
 
