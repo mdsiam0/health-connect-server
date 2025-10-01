@@ -26,17 +26,17 @@ const client = new MongoClient(uri, {
 
 async function run() {
   try {
- 
+
     await client.connect();
     console.log("✅ Connected to MongoDB");
 
-    
+
     const db = client.db("mcmsDB");
     const usersCollection = db.collection("users");
     const campsCollection = db.collection("camps");
     const registrationsCollection = db.collection("registrations");
 
-   
+
 
     // GET all users
     app.get("/users", async (req, res) => {
@@ -49,21 +49,42 @@ async function run() {
     });
 
     // GET single user by email
-app.get("/users/:email", async (req, res) => {
-  try {
-    const email = req.params.email;
-    const user = await usersCollection.findOne({ email });
+    app.get("/users/:email", async (req, res) => {
+      try {
+        const email = req.params.email;
+        const user = await usersCollection.findOne({ email });
 
-    if (!user) {
-      return res.status(404).send({ message: "User not found" });
-    }
+        if (!user) {
+          return res.status(404).send({ message: "User not found" });
+        }
 
-    res.send(user);
-  } catch (error) {
-    console.error("Error fetching user:", error);
-    res.status(500).send({ message: "Failed to fetch user", error });
-  }
-});
+        res.send(user);
+      } catch (error) {
+        console.error("Error fetching user:", error);
+        res.status(500).send({ message: "Failed to fetch user", error });
+      }
+    });
+
+    // ✅ GET user role by email
+    app.get("/users/role/:email", async (req, res) => {
+      try {
+        const email = req.params.email;
+        const user = await usersCollection.findOne(
+          { email },
+          { projection: { role: 1, _id: 0 } } // only return role field
+        );
+
+        if (!user) {
+          return res.status(404).send({ message: "User not found" });
+        }
+
+        res.send({ role: user.role });
+      } catch (error) {
+        console.error("Error fetching user role:", error);
+        res.status(500).send({ message: "Failed to fetch role", error });
+      }
+    });
+
 
 
     // POST a new user
@@ -102,7 +123,7 @@ app.get("/users/:email", async (req, res) => {
       }
     });
 
-    
+
 
     // GET camps (with optional sorting & limit)
     app.get("/camps", async (req, res) => {
@@ -176,7 +197,7 @@ app.get("/users/:email", async (req, res) => {
       }
     });
 
-    
+
 
     // GET all registered participants for an organizer
     app.get("/registered-camps/:organizerEmail", async (req, res) => {
