@@ -265,11 +265,57 @@ async function run() {
         const registrations = await registrationsCollection
           .find({ participantEmail: email })
           .toArray();
-        res.send(registrations);
+
+        // Map to clean JSON
+        const cleanRegs = registrations.map((reg) => ({
+          _id: reg._id.toString(),
+          campId: reg.campId,
+          campName: reg.campName,
+          campFees: typeof reg.campFees === "object" ? parseInt(reg.campFees.$numberInt) : reg.campFees,
+          location: reg.location,
+          healthcareProfessional: reg.healthcareProfessional,
+          participantName: reg.participantName,
+          participantEmail: reg.participantEmail,
+          age: reg.age,
+          phone: reg.phone,
+          gender: reg.gender,
+          emergencyContact: reg.emergencyContact,
+          paymentStatus: reg.paymentStatus || "Unpaid",
+          confirmationStatus: reg.confirmationStatus || "Pending"
+        }));
+
+        res.send(cleanRegs);
       } catch (error) {
         res.status(500).send({ message: "Failed to fetch registrations", error });
       }
     });
+
+    
+    app.delete("/registrations/:id", async (req, res) => {
+      try {
+        const { id } = req.params;
+
+        
+        const reg = await registrationsCollection.findOne({ _id: new ObjectId(id) });
+        if (!reg) return res.status(404).send({ success: false, message: "Registration not found" });
+
+        
+        const result = await registrationsCollection.deleteOne({ _id: new ObjectId(id) });
+
+        
+        await campsCollection.updateOne(
+          { _id: new ObjectId(reg.campId) },
+          { $inc: { participants: -1 } }
+        );
+
+        res.send({ success: true, message: "Registration cancelled successfully" });
+      } catch (error) {
+        console.error(error);
+        res.status(500).send({ success: false, message: "Failed to cancel registration", error });
+      }
+    });
+
+
 
 
     // GET all registered participants for an organizer
