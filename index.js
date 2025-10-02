@@ -28,7 +28,7 @@ const client = new MongoClient(uri, {
 async function run() {
   try {
 
-    await client.connect();
+    // await client.connect();
     console.log("✅ Connected to MongoDB");
 
 
@@ -250,19 +250,7 @@ async function run() {
     });
 
 
-    app.post("/feedbacks", async (req, res) => {
-      try {
-        const feedback = req.body;
-        const db = client.db("mcmsDB");
-        const feedbackCollection = db.collection("feedbacks");
-
-        const result = await feedbackCollection.insertOne(feedback);
-        res.send({ success: true, message: "Feedback submitted successfully", result });
-      } catch (error) {
-        console.error(error);
-        res.status(500).send({ success: false, message: "Failed to submit feedback", error });
-      }
-    });
+    
 
     // POST new camp
     app.post("/camps", async (req, res) => {
@@ -434,7 +422,6 @@ async function run() {
         res.status(500).send({ success: false, message: "Failed to cancel registration", error });
       }
     });
-
 
 
     // Get all registrations
