@@ -450,8 +450,6 @@ async function run() {
 
 
 
-
-
     // GET all registered participants for an organizer
     app.get("/registered-camps/:organizerEmail", async (req, res) => {
       try {
@@ -462,6 +460,59 @@ async function run() {
         res.status(500).send({ message: "Failed to fetch registrations", error });
       }
     });
+
+
+
+    // feedback collection
+const feedbackCollection = client.db("mcmsDB").collection("feedback");
+
+// POST new feedback (participant side)
+// POST feedback
+app.post("/feedback", async (req, res) => {
+  try {
+    const { participantEmail, campId, feedback, date } = req.body;
+
+    // Find the user in DB
+    const user = await usersCollection.findOne({ email: participantEmail });
+
+    const feedbackData = {
+      campId,
+      participantEmail,
+      participantName: user?.name || "Anonymous",
+      feedback,
+      date,
+    };
+
+    const result = await feedbackCollection.insertOne(feedbackData);
+    res.status(201).send(result);
+  } catch (error) {
+    res.status(500).send({ error: "Failed to save feedback" });
+  }
+});
+
+
+app.get("/feedback", async (req, res) => {
+  try {
+    const feedbacks = await feedbackCollection.find().toArray();
+    res.send(feedbacks);
+  } catch (error) {
+    console.error("Error fetching feedback:", error);
+    res.status(500).send({ message: "Failed to fetch feedback", error });
+  }
+});
+
+// GET feedbacks for a camp
+app.get("/feedback/camp/:campId", async (req, res) => {
+  try {
+    const { campId } = req.params;
+    const feedbacks = await feedbackCollection.find({ campId }).toArray();
+    res.send(feedbacks);
+  } catch (error) {
+    console.error("Error fetching feedback:", error);
+    res.status(500).send({ message: "Failed to fetch feedback", error });
+  }
+});
+
 
   } catch (error) {
     console.error("❌ MongoDB connection error:", error);
