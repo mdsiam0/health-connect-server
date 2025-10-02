@@ -40,6 +40,39 @@ async function run() {
 
 
 
+
+    // GET payments by participant email
+    app.get("/payments/participant/:email", async (req, res) => {
+      try {
+        const { email } = req.params;
+        const payments = await paymentsCollection
+          .find({ participantEmail: email })
+          .toArray();
+
+        // Map ObjectId and Date for safe JSON
+        const cleanPayments = payments.map((p) => ({
+          _id: p._id.toString(),
+          campId: p.campId,
+          campName: p.campName,
+          participantEmail: p.participantEmail,
+          participantName: p.participantName,
+          amount: p.amount,
+          paymentStatus: p.paymentStatus || "Paid",
+          confirmationStatus: p.confirmationStatus || "Pending",
+          transactionId: p.transactionId,
+          date: p.date ? new Date(p.date) : null,
+        }));
+
+        res.send(cleanPayments);
+      } catch (error) {
+        console.error("Error fetching payments:", error);
+        res.status(500).send({ message: "Failed to fetch payments", error });
+      }
+    });
+
+
+
+
     // GET all users
     app.get("/users", async (req, res) => {
       try {
