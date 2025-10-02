@@ -73,7 +73,7 @@ async function run() {
         const email = req.params.email;
         const user = await usersCollection.findOne(
           { email },
-          { projection: { role: 1, _id: 0 } } 
+          { projection: { role: 1, _id: 0 } }
         );
 
         if (!user) {
@@ -92,7 +92,7 @@ async function run() {
     app.patch("/registrations/:id", async (req, res) => {
       try {
         const { id } = req.params;
-        const updateData = req.body; 
+        const updateData = req.body;
 
         const result = await registrationsCollection.updateOne(
           { _id: new ObjectId(id) },
@@ -162,23 +162,23 @@ async function run() {
 
     const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
 
-   
+
 
     app.post("/create-payment-intent", async (req, res) => {
       try {
         const { amount, participantEmail, campId } = req.body;
 
-       
+
         const centsAmount = Math.round(parseFloat(amount) * 100);
 
         if (isNaN(centsAmount) || centsAmount <= 0) {
           return res.status(400).send({ error: "Invalid payment amount." });
         }
 
-        
+
         const paymentIntent = await stripe.paymentIntents.create({
-          amount: centsAmount, 
-          currency: "usd", 
+          amount: centsAmount,
+          currency: "usd",
           payment_method_types: ["card"],
           metadata: {
             participantEmail,
@@ -190,14 +190,14 @@ async function run() {
           clientSecret: paymentIntent.client_secret,
         });
       } catch (err) {
-        console.error("Stripe Intent Error:", err); 
+        console.error("Stripe Intent Error:", err);
         res.status(500).send({ error: err.message });
       }
     });
 
 
 
-    
+
     app.get("/camps", async (req, res) => {
       try {
         const sortField = req.query.sort;
@@ -213,6 +213,21 @@ async function run() {
         res.send(camps);
       } catch (error) {
         res.status(500).send({ message: "Failed to fetch camps", error });
+      }
+    });
+
+
+    app.post("/feedbacks", async (req, res) => {
+      try {
+        const feedback = req.body;
+        const db = client.db("mcmsDB");
+        const feedbackCollection = db.collection("feedbacks");
+
+        const result = await feedbackCollection.insertOne(feedback);
+        res.send({ success: true, message: "Feedback submitted successfully", result });
+      } catch (error) {
+        console.error(error);
+        res.status(500).send({ success: false, message: "Failed to submit feedback", error });
       }
     });
 
