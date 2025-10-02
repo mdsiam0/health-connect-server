@@ -1,9 +1,8 @@
-import express from "express";
-import Stripe from "stripe";
 const express = require("express");
 const cors = require("cors");
 const dotenv = require("dotenv");
 const { MongoClient, ServerApiVersion, ObjectId } = require("mongodb");
+const Stripe = require("stripe");
 
 dotenv.config();
 
@@ -37,6 +36,7 @@ async function run() {
     const usersCollection = db.collection("users");
     const campsCollection = db.collection("camps");
     const registrationsCollection = db.collection("registrations");
+    const paymentsCollection = db.collection("payments");
 
 
 
@@ -73,7 +73,7 @@ async function run() {
         const email = req.params.email;
         const user = await usersCollection.findOne(
           { email },
-          { projection: { role: 1, _id: 0 } } // only return role field
+          { projection: { role: 1, _id: 0 } } 
         );
 
         if (!user) {
@@ -84,6 +84,38 @@ async function run() {
       } catch (error) {
         console.error("Error fetching user role:", error);
         res.status(500).send({ message: "Failed to fetch role", error });
+      }
+    });
+
+
+
+    app.patch("/registrations/:id", async (req, res) => {
+      try {
+        const { id } = req.params;
+        const updateData = req.body; 
+
+        const result = await registrationsCollection.updateOne(
+          { _id: new ObjectId(id) },
+          { $set: updateData }
+        );
+
+        res.send({ success: true, result });
+      } catch (error) {
+        console.error("Error updating registration status:", error);
+        res.status(500).send({ success: false, message: "Failed to update registration", error });
+      }
+    });
+
+
+
+    app.post("/payments", async (req, res) => {
+      try {
+        const paymentData = req.body;
+        const result = await paymentsCollection.insertOne(paymentData);
+        res.send({ success: true, result });
+      } catch (error) {
+        console.error("Error saving payment:", error);
+        res.status(500).send({ success: false, message: "Failed to save payment", error });
       }
     });
 
@@ -126,37 +158,46 @@ async function run() {
     });
 
 
+
+
+    const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
+
+   
+
+    app.post("/create-payment-intent", async (req, res) => {
+      try {
+        const { amount, participantEmail, campId } = req.body;
+
+       
+        const centsAmount = Math.round(parseFloat(amount) * 100);
+
+        if (isNaN(centsAmount) || centsAmount <= 0) {
+          return res.status(400).send({ error: "Invalid payment amount." });
+        }
+
+        
+        const paymentIntent = await stripe.paymentIntents.create({
+          amount: centsAmount, 
+          currency: "usd", 
+          payment_method_types: ["card"],
+          metadata: {
+            participantEmail,
+            campId,
+          },
+        });
+
+        res.send({
+          clientSecret: paymentIntent.client_secret,
+        });
+      } catch (err) {
+        console.error("Stripe Intent Error:", err); 
+        res.status(500).send({ error: err.message });
+      }
+    });
+
+
+
     
-
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
-
-app.post("/create-payment-intent", async (req, res) => {
-  try {
-    const { amount, participantEmail, campId } = req.body;
-
-    // Create payment intent
-    const paymentIntent = await stripe.paymentIntents.create({
-      amount: amount * 100,
-      payment_method_types: ["card"],
-      metadata: {
-        participantEmail,
-        campId,
-      },
-    });
-
-    res.send({
-      clientSecret: paymentIntent.client_secret,
-    });
-  } catch (err) {
-    console.error(err);
-    res.status(500).send({ error: err.message });
-  }
-});
-
-
-
-
-    // GET camps (with optional sorting & limit)
     app.get("/camps", async (req, res) => {
       try {
         const sortField = req.query.sort;
@@ -321,19 +362,19 @@ app.post("/create-payment-intent", async (req, res) => {
       }
     });
 
-    
+
     app.delete("/registrations/:id", async (req, res) => {
       try {
         const { id } = req.params;
 
-        
+
         const reg = await registrationsCollection.findOne({ _id: new ObjectId(id) });
         if (!reg) return res.status(404).send({ success: false, message: "Registration not found" });
 
-        
+
         const result = await registrationsCollection.deleteOne({ _id: new ObjectId(id) });
 
-        
+
         await campsCollection.updateOne(
           { _id: new ObjectId(reg.campId) },
           { $inc: { participants: -1 } }
