@@ -437,6 +437,33 @@ async function run() {
 
 
 
+    // Get all registrations
+    app.get("/registrations", async (req, res) => {
+      const result = await registrationsCollection.find().toArray();
+      res.send(result);
+    });
+
+    // Confirm payment
+    app.patch("/registrations/:id", async (req, res) => {
+      const id = req.params.id;
+      const { confirmationStatus } = req.body;
+      const result = await registrationsCollection.updateOne(
+        { _id: new ObjectId(id) },
+        { $set: { confirmationStatus } }
+      );
+      res.send(result);
+    });
+
+    // Cancel registration
+    app.delete("/registrations/:id", async (req, res) => {
+      const id = req.params.id;
+      const result = await registrationsCollection.deleteOne({ _id: new ObjectId(id) });
+      res.send(result);
+    });
+
+
+
+
 
     // GET all registered participants for an organizer
     app.get("/registered-camps/:organizerEmail", async (req, res) => {
